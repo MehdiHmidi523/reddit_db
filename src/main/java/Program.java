@@ -4,6 +4,7 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Program {
     public static void createNewDatabase(String dbLocation) {
@@ -49,8 +50,8 @@ public class Program {
              Statement stmt = conn.createStatement()) {
 
             // todo: creates a new table
-//            stmt.execute(createSubsTable);
-//            stmt.execute(createUsersTable);
+            stmt.execute(createSubsTable);
+            stmt.execute(createUsersTable);
             stmt.execute(createPostsTable);
         } catch (SQLException e) {
             System.out.println(e.getMessage());
@@ -65,16 +66,27 @@ public class Program {
         BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
         long currentTime = System.currentTimeMillis();
 
+        // the following GREATLY speeds up importing the data: 23 seconds against 120 minutes
+        conn.prepareStatement("PRAGMA synchronous = OFF").execute();
+
+        /*
+        using `wc -l` we can count the amount of lines in the original JSON data file: 150429
+        using the AtomicInteger we count the number of insertions: 150429 -> MATCH
+         */
+
+        AtomicInteger batch = new AtomicInteger(0);
+        AtomicInteger total = new AtomicInteger(0);
+
         bufferedReader
                 .lines()
                 .filter(str -> !str.isEmpty())
                 .map(JSONObject::new)
                 .forEach(jsonObject -> {
-                    try {
-                        String subsSql = "INSERT OR IGNORE INTO subs(subreddit_id, subreddit) VALUES(?,?)";
-                        String usersSql = "INSERT OR IGNORE INTO users(id, author) VALUES(?,?)";
-                        String postsSql = "INSERT OR IGNORE INTO posts(parent_id, score, created_utc, link_id, body, name, author, subreddit) VALUES(?,?,?,?,?,?,?,?)";
+                    String subsSql = "INSERT OR IGNORE INTO subs(subreddit_id, subreddit) VALUES(?,?)";
+                    String usersSql = "INSERT OR IGNORE INTO users(id, author) VALUES(?,?)";
+                    String postsSql = "INSERT OR IGNORE INTO posts(parent_id, score, created_utc, link_id, body, name, author, subreddit) VALUES(?,?,?,?,?,?,?,?)";
 
+                    try {
                         PreparedStatement ppstmtSubs = conn.prepareStatement(subsSql);
                         PreparedStatement ppstmtUsers = conn.prepareStatement(usersSql);
                         PreparedStatement ppstmtPosts = conn.prepareStatement(postsSql);
@@ -94,29 +106,33 @@ public class Program {
                         ppstmtPosts.setString(7, jsonObject.getString("author"));
                         ppstmtPosts.setString(8, jsonObject.getString("subreddit"));
 
-                        ppstmtSubs.execute();
+                        ppstmtSubs .execute();
                         ppstmtUsers.execute();
                         ppstmtPosts.execute();
+
+                        total.getAndIncrement();
                     } catch (SQLException e) {
                         System.out.println(e.getMessage());
                     }
                 });
 
         System.out.println("Total time in seconds: " + (System.currentTimeMillis() - currentTime) / 1000);
+        System.out.println("Total insertions: " + total.get());
     }
 
     public static void main(String[] args) {
         String tableName = "redditcomments.db";
 
-        String dbLocation = "jdbc:sqlite:/Users/JorianWielink/" + tableName;
+        String dbLocation = "jdbc:sqlite:/home/n41r0j/" + tableName;
+//        String dbLocation = "jdbc:sqlite:/Users/JorianWielink/" + tableName;
 //        String dbLocation = "jdbc:sqlite:C:\Users\Void\ + tableName;
 
         // todo: UNCOMMENT THIS to create a new database:
-//        createNewDatabase(dbLocation);
+        createNewDatabase(dbLocation);
         createTable(dbLocation);
 
         try {
-            parseJsonToDB(dbLocation, new FileInputStream(new File("/Users/JorianWielink/Downloads/RC_2007-10")));
+            parseJsonToDB(dbLocation, new FileInputStream(new File("/home/n41r0j/RC_2007-10")));
         } catch (SQLException | FileNotFoundException e) {
             e.printStackTrace();
         }
