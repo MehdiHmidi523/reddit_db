@@ -7,17 +7,14 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class Program {
-    public static void createNewDatabase(String dbLocation) {
+    private static void createNewDatabase(String dbLocation) {
         try (Connection conn = DriverManager.getConnection(dbLocation)) {
             if (conn != null) {
                 DatabaseMetaData meta = conn.getMetaData();
                 System.out.println("The driver name is " + meta.getDriverName());
                 System.out.println("A new database has been created.");
             }
-
-        } catch (SQLException e) {
-            System.out.println(e.getMessage());
-        }
+        } catch (SQLException e) { System.out.println(e.getMessage()); }
     }
 
     public static void createTable(String dbLocation) {
@@ -54,17 +51,14 @@ public class Program {
             stmt.execute(createSubsTable);
             stmt.execute(createUsersTable);
             stmt.execute(createPostsTable);
-        } catch (SQLException e) {
-            System.out.println(e.getMessage());
-        }
+        } catch (SQLException e) { System.out.println(e.getMessage()); }
     }
 
-    public static void parseJsonToDB(String dbLocation, InputStream inputStream) throws SQLException {
-
+    private static void parseJsonToDB(String dbLocation, InputStream inputStream) throws SQLException {
         final Connection conn = DriverManager.getConnection(dbLocation);
-
         Objects.requireNonNull(inputStream, "InputStream cannot be null");
         BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+
         long currentTime = System.currentTimeMillis();
 
         // the following GREATLY speeds up importing the data: 23 seconds against 120 minutes
@@ -74,10 +68,7 @@ public class Program {
         using `wc -l` we can count the amount of lines in the original JSON data file: 150429
         using the AtomicInteger we count the number of insertions: 150429 -> MATCH
          */
-
-        AtomicInteger batch = new AtomicInteger(0);
         AtomicInteger total = new AtomicInteger(0);
-
         bufferedReader
                 .lines()
                 .filter(str -> !str.isEmpty())
@@ -116,26 +107,20 @@ public class Program {
                         System.out.println(e.getMessage());
                     }
                 });
-
         System.out.println("Total time in seconds: " + (System.currentTimeMillis() - currentTime) / 1000);
         System.out.println("Total insertions: " + total.get());
     }
-
     public static void main(String[] args) {
         String tableName = "redditcomments-not-nullablev2.db";
 
         String dbLocation = "jdbc:sqlite:/home/n41r0j/" + tableName;
-//        String dbLocation = "jdbc:sqlite:/Users/JorianWielink/" + tableName;
-//        String dbLocation = "jdbc:sqlite:C:\Users\Void\ + tableName;
-
-        // todo: UNCOMMENT THIS to create a new database:
+        // String dbLocation = "jdbc:sqlite:/Users/JorianWielink/" + tableName;
+        // String dbLocation = "jdbc:sqlite:C:\Users\Void\ + tableName;
+        // TODO: UNCOMMENT THIS to create a new database:
         createNewDatabase(dbLocation);
         createTable(dbLocation);
-
         try {
             parseJsonToDB(dbLocation, new FileInputStream(new File("/home/n41r0j/RC_2007-10")));
-        } catch (SQLException | FileNotFoundException e) {
-            e.printStackTrace();
-        }
+        } catch (SQLException | FileNotFoundException e) { e.printStackTrace(); }
     }
 }
