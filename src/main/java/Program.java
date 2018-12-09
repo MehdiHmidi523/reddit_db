@@ -123,7 +123,7 @@ public class Program {
     }
 
     public static void main(String[] args) {
-        String tableName = "redditcomments-not-nullablev2.db";
+        String tableName = "redditcomments-nullable.db";
 
         String dbLocation = "jdbc:sqlite:/home/n41r0j/" + tableName;
 //        String dbLocation = "jdbc:sqlite:/Users/JorianWielink/" + tableName;
