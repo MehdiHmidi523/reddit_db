@@ -1,3 +1,5 @@
+import com.oracle.javafx.jmx.json.JSONReader;
+import jdk.nashorn.internal.parser.JSONParser;
 import org.json.JSONObject;
 
 import java.io.*;
@@ -30,7 +32,6 @@ public class Program {
                 "author VARCHAR(255) NOT NULL" +
                 ");";
 
-        // SQL statement for creating a new table
         String createPostsTable = "CREATE TABLE IF NOT EXISTS posts(" +
                 "parent_id VARCHAR(255) NOT NULL PRIMARY KEY, " +
                 "score INTEGER NOT NULL, " +
@@ -54,7 +55,7 @@ public class Program {
         } catch (SQLException e) { System.out.println(e.getMessage()); }
     }
 
-    private static void parseJsonToDB(String dbLocation, InputStream inputStream) throws SQLException {
+    private static void parseJsonToDB(String dbLocation, InputStream inputStream) throws SQLException, IOException {
         final Connection conn = DriverManager.getConnection(dbLocation);
         Objects.requireNonNull(inputStream, "InputStream cannot be null");
         BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
@@ -62,65 +63,75 @@ public class Program {
         long currentTime = System.currentTimeMillis();
 
         // the following GREATLY speeds up importing the data: 23 seconds against 120 minutes
-        conn.prepareStatement("PRAGMA synchronous = OFF").execute();
+//        conn.prepareStatement("PRAGMA synchronous = OFF").execute();
+        conn.prepareStatement("PRAGMA journal_mode = WAL").execute();
+        conn.setAutoCommit(false);
 
-        /*
-        using `wc -l` we can count the amount of lines in the original JSON data file: 150429
-        using the AtomicInteger we count the number of insertions: 150429 -> MATCH
-         */
-        AtomicInteger total = new AtomicInteger(0);
-        bufferedReader
-                .lines()
-                .filter(str -> !str.isEmpty())
-                .map(JSONObject::new)
-                .forEach(jsonObject -> {
-                    String subsSql = "INSERT OR IGNORE INTO subs(subreddit_id, subreddit) VALUES(?,?)";
-                    String usersSql = "INSERT OR IGNORE INTO users(id, author) VALUES(?,?)";
-                    String postsSql = "INSERT OR IGNORE INTO posts(parent_id, score, created_utc, link_id, body, name, author, subreddit) VALUES(?,?,?,?,?,?,?,?)";
+        String line = null;
+        JSONObject jsonObject = null;
+        int i = 0;
 
-                    try {
-                        PreparedStatement ppstmtSubs = conn.prepareStatement(subsSql);
-                        PreparedStatement ppstmtUsers = conn.prepareStatement(usersSql);
-                        PreparedStatement ppstmtPosts = conn.prepareStatement(postsSql);
+        String subsSql = "INSERT OR IGNORE INTO subs(subreddit_id, subreddit) VALUES(?,?)";
+        String usersSql = "INSERT OR IGNORE INTO users(id, author) VALUES(?,?)";
+        String postsSql = "INSERT OR IGNORE INTO posts(parent_id, score, created_utc, link_id, body, name, author, subreddit) VALUES(?,?,?,?,?,?,?,?)";
 
-                        ppstmtSubs.setString(1, jsonObject.getString("subreddit_id"));
-                        ppstmtSubs.setString(2, jsonObject.getString("subreddit"));
+        PreparedStatement ppstmtSubs = conn.prepareStatement(subsSql);
+        PreparedStatement ppstmtUsers = conn.prepareStatement(usersSql);
+        PreparedStatement ppstmtPosts = conn.prepareStatement(postsSql);
 
-                        ppstmtUsers.setString(1, jsonObject.getString("id"));
-                        ppstmtUsers.setString(2, jsonObject.getString("author"));
+        while ((line = bufferedReader.readLine()) != null) {
+            jsonObject = new JSONObject(line);
 
-                        ppstmtPosts.setString(1, jsonObject.getString("parent_id"));
-                        ppstmtPosts.setInt(2, jsonObject.getInt("score"));
-                        ppstmtPosts.setInt(3, jsonObject.getInt("created_utc"));
-                        ppstmtPosts.setString(4, jsonObject.getString("link_id"));
-                        ppstmtPosts.setString(5, jsonObject.getString("body"));
-                        ppstmtPosts.setString(6, jsonObject.getString("name"));
-                        ppstmtPosts.setString(7, jsonObject.getString("author"));
-                        ppstmtPosts.setString(8, jsonObject.getString("subreddit"));
+            ppstmtSubs.setString(1, jsonObject.getString("subreddit_id"));
+            ppstmtSubs.setString(2, jsonObject.getString("subreddit"));
 
-                        ppstmtSubs .execute();
-                        ppstmtUsers.execute();
-                        ppstmtPosts.execute();
+            ppstmtUsers.setString(1, jsonObject.getString("id"));
+            ppstmtUsers.setString(2, jsonObject.getString("author"));
 
-                        total.getAndIncrement();
-                    } catch (SQLException e) {
-                        System.out.println(e.getMessage());
-                    }
-                });
-        System.out.println("Total time in seconds: " + (System.currentTimeMillis() - currentTime) / 1000);
-        System.out.println("Total insertions: " + total.get());
+            ppstmtPosts.setString(1, jsonObject.getString("parent_id"));
+            ppstmtPosts.setInt(2, jsonObject.getInt("score"));
+            ppstmtPosts.setInt(3, jsonObject.getInt("created_utc"));
+            ppstmtPosts.setString(4, jsonObject.getString("link_id"));
+            ppstmtPosts.setString(5, jsonObject.getString("body"));
+            ppstmtPosts.setString(6, jsonObject.getString("name"));
+            ppstmtPosts.setString(7, jsonObject.getString("author"));
+            ppstmtPosts.setString(8, jsonObject.getString("subreddit"));
+
+            ppstmtSubs .addBatch();
+            ppstmtUsers.addBatch();
+            ppstmtPosts.addBatch();
+
+            if (i++ % 10000 == 0) {
+                ppstmtSubs.executeBatch();
+                ppstmtUsers.executeBatch();
+                ppstmtPosts.executeBatch();
+                System.out.printf("batch %d executed.", (i / 10000));
+            }
+
+        }
+
+        if (i % 10000 != 0) {
+            ppstmtSubs.executeBatch();
+            ppstmtUsers.executeBatch();
+            ppstmtPosts.executeBatch();
+        }
+
+        System.out.println("\nTotal time in seconds: " + (System.currentTimeMillis() - currentTime) / 1000);
     }
+
     public static void main(String[] args) {
-        String tableName = "redditcomments-not-nullablev3.db";
+        String tableName = "redditcomments-not-nullablev10.db";
 
         String dbLocation = "jdbc:sqlite:/home/n41r0j/" + tableName;
         // String dbLocation = "jdbc:sqlite:/Users/JorianWielink/" + tableName;
         // String dbLocation = "jdbc:sqlite:C:\Users\Void\ + tableName;
+
         // TODO: UNCOMMENT THIS to create a new database:
         createNewDatabase(dbLocation);
         createTable(dbLocation);
         try {
-            parseJsonToDB(dbLocation, new FileInputStream(new File("/home/n41r0j/RC_2007-10")));
-        } catch (SQLException | FileNotFoundException e) { e.printStackTrace(); }
+            parseJsonToDB(dbLocation, new FileInputStream(new File("/home/n41r0j/Downloads/RC_2012-12")));
+//            parseJsonToDB(dbLocation, new FileInputStream(new File("/home/n41r0j/RC_2007-10")));
+        } catch (SQLException | IOException e) { e.printStackTrace(); }
     }
 }
