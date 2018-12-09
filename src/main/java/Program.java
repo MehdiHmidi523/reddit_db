@@ -23,28 +23,29 @@ public class Program {
     public static void createTable(String dbLocation) {
 
         String createSubsTable = "CREATE TABLE IF NOT EXISTS subs(" +
-                "subreddit_id VARCHAR(255) NOT NULL," +
-                "subreddit VARCHAR(255) NOT NULL," +
+                "subreddit_id VARCHAR(255)," +
+                "subreddit VARCHAR(255)," +
                 "PRIMARY KEY(subreddit_id)" +
                 ");";
 
         String createUsersTable = "CREATE TABLE IF NOT EXISTS users(" +
-                "id VARCHAR(255) NOT NULL PRIMARY KEY," +
-                "author VARCHAR(255) NOT NULL" +
+                "id VARCHAR(255)," +
+                "author VARCHAR(255) NOT NULL," +
+                "PRIMARY KEY(id)" +
                 ");";
 
-        // SQL statement for creating a new table
         String createPostsTable = "CREATE TABLE IF NOT EXISTS posts(" +
-                "parent_id VARCHAR(255) NOT NULL PRIMARY KEY, " +
-                "score INTEGER NOT NULL, " +
-                "created_utc INTEGER NOT NULL," +
-                "link_id VARCHAR(255) NOT NULL, " +
-                "body VARCHAR(8000)," +
-                "name VARCHAR(255) NOT NULL, " +
-                "author VARCHAR(255) NOT NULL, " +
-                "subreddit VARCHAR(255) NOT NULL, " +
+                "parent_id VARCHAR(255), " +
+                "score INTEGER, " +
+                "created_utc INTEGER, " +
+                "link_id VARCHAR(255), " +
+                "body VARCHAR(8000), " +
+                "name VARCHAR(255), " +
+                "author VARCHAR(255), " +
+                "subreddit VARCHAR(255), " +
                 "FOREIGN KEY (author) REFERENCES users(author), " +
-                "FOREIGN KEY (subreddit) REFERENCES subs(subreddit)" +
+                "FOREIGN KEY (subreddit) REFERENCES subs(subreddit)," +
+                "PRIMARY KEY (parent_id)" +
                 ");";
 
         try (Connection conn = DriverManager.getConnection(dbLocation);
