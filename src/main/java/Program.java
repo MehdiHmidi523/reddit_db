@@ -62,7 +62,7 @@ public class Program {
 
         long currentTime = System.currentTimeMillis();
 
-        // the following GREATLY speeds up importing the data: 23 seconds against 120 minutes
+//        the following GREATLY speeds up importing the data: 23 seconds against 120 minutes
 //        conn.prepareStatement("PRAGMA synchronous = OFF").execute();
         conn.prepareStatement("PRAGMA journal_mode = WAL").execute();
         conn.setAutoCommit(false);
@@ -107,7 +107,6 @@ public class Program {
                 ppstmtPosts.executeBatch();
                 System.out.printf("batch %d executed.", (i / 10000));
             }
-
         }
 
         if (i % 10000 != 0) {
