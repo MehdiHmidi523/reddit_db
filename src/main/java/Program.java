@@ -111,7 +111,7 @@ public class Program {
         System.out.println("Total insertions: " + total.get());
     }
     public static void main(String[] args) {
-        String tableName = "redditcomments-not-nullablev2.db";
+        String tableName = "redditcomments-not-nullablev3.db";
 
         String dbLocation = "jdbc:sqlite:/home/n41r0j/" + tableName;
         // String dbLocation = "jdbc:sqlite:/Users/JorianWielink/" + tableName;
