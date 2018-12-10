@@ -1,12 +1,8 @@
-import com.oracle.javafx.jmx.json.JSONReader;
-import jdk.nashorn.internal.parser.JSONParser;
 import org.json.JSONObject;
-
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class Program {
     private static void createNewDatabase(String dbLocation) {
@@ -22,14 +18,14 @@ public class Program {
     public static void createTable(String dbLocation) {
 
         String createSubsTable = "CREATE TABLE IF NOT EXISTS subs(" +
-                "subreddit_id VARCHAR(255) NOT NULL," +
-                "subreddit VARCHAR(255) NOT NULL," +
-                "PRIMARY KEY(subreddit_id)" +
+                "subreddit_id VARCHAR(255) PRIMARY KEY," +
+                "subreddit VARCHAR(255)" +
                 ");";
 
         String createUsersTable = "CREATE TABLE IF NOT EXISTS users(" +
-                "id VARCHAR(255) NOT NULL PRIMARY KEY," +
-                "author VARCHAR(255) NOT NULL" +
+                "id VARCHAR(255) NOT NULL," +
+                "author VARCHAR(255) NOT NULL," +
+                "PRIMARY KEY(id)" +
                 ");";
 
         String createPostsTable = "CREATE TABLE IF NOT EXISTS posts(" +
@@ -63,8 +59,8 @@ public class Program {
         long currentTime = System.currentTimeMillis();
 
 //        the following GREATLY speeds up importing the data: 23 seconds against 120 minutes
-//        conn.prepareStatement("PRAGMA synchronous = OFF").execute();
-        conn.prepareStatement("PRAGMA journal_mode = WAL").execute();
+        conn.prepareStatement("PRAGMA synchronous = OFF").execute();
+//        conn.prepareStatement("PRAGMA journal_mode = WAL").execute();
         conn.setAutoCommit(false);
 
         String line = null;
@@ -87,7 +83,7 @@ public class Program {
 
             ppstmtUsers.setString(1, jsonObject.getString("id"));
             ppstmtUsers.setString(2, jsonObject.getString("author"));
-
+//
             ppstmtPosts.setString(1, jsonObject.getString("parent_id"));
             ppstmtPosts.setInt(2, jsonObject.getInt("score"));
             ppstmtPosts.setInt(3, jsonObject.getInt("created_utc"));
@@ -105,7 +101,7 @@ public class Program {
                 ppstmtSubs.executeBatch();
                 ppstmtUsers.executeBatch();
                 ppstmtPosts.executeBatch();
-                System.out.printf("batch %d executed.", (i / 10000));
+                System.out.printf("\nbatch %d executed.", (i / 10000));
             }
         }
 
@@ -115,21 +111,24 @@ public class Program {
             ppstmtPosts.executeBatch();
         }
 
+        conn.commit();
+
         System.out.println("\nTotal time in seconds: " + (System.currentTimeMillis() - currentTime) / 1000);
     }
 
     public static void main(String[] args) {
-        String tableName = "redditcomments-not-nullablev10.db";
+        String tableName = "redditcomments-not-nullable101.db";
 
-        String dbLocation = "jdbc:sqlite:/home/n41r0j/" + tableName;
-        // String dbLocation = "jdbc:sqlite:/Users/JorianWielink/" + tableName;
+//        String dbLocation = "jdbc:sqlite:/home/n41r0j/" + tableName;
+         String dbLocation = "jdbc:sqlite:/Users/JorianWielink/" + tableName;
         // String dbLocation = "jdbc:sqlite:C:\Users\Void\ + tableName;
 
         // TODO: UNCOMMENT THIS to create a new database:
         createNewDatabase(dbLocation);
         createTable(dbLocation);
         try {
-            parseJsonToDB(dbLocation, new FileInputStream(new File("/home/n41r0j/Downloads/RC_2012-12")));
+            parseJsonToDB(dbLocation, new FileInputStream(new File("/Users/JorianWielink/Downloads/RC_2007-10")));
+//            parseJsonToDB(dbLocation, new FileInputStream(new File("/home/n41r0j/Downloads/RC_2012-12")));
 //            parseJsonToDB(dbLocation, new FileInputStream(new File("/home/n41r0j/RC_2007-10")));
         } catch (SQLException | IOException e) { e.printStackTrace(); }
     }
