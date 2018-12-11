@@ -1,12 +1,8 @@
-import com.oracle.javafx.jmx.json.JSONReader;
-import jdk.nashorn.internal.parser.JSONParser;
 import org.json.JSONObject;
-
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class Program {
     private static void createNewDatabase(String dbLocation) {
@@ -28,8 +24,9 @@ public class Program {
                 ");";
 
         String createUsersTable = "CREATE TABLE IF NOT EXISTS users(" +
-                "id VARCHAR(255) NOT NULL PRIMARY KEY," +
-                "author VARCHAR(255) NOT NULL" +
+                "id VARCHAR(255) NOT NULL," +
+                "author VARCHAR(255) NOT NULL," +
+                "PRIMARY KEY(id)" +
                 ");";
 
         String createPostsTable = "CREATE TABLE IF NOT EXISTS posts(" +
@@ -107,7 +104,7 @@ public class Program {
                 ppstmtPosts.executeBatch();
                 if (i % 100000 == 0)
                     conn.commit();
-//                System.out.printf("batch %d executed.", (i / 10000));
+                System.out.printf("\nbatch %d executed.", (i / 10000));
             }
         }
 
@@ -118,6 +115,8 @@ public class Program {
             conn.commit();
         }
 
+        conn.commit();
+
         System.out.println("\nTotal time in seconds: " + (System.currentTimeMillis() - currentTime) / 1000);
     }
 
@@ -125,22 +124,8 @@ public class Program {
         String tableName = "redditcomments-not-nullable.db";
 //
         String dbLocation = "jdbc:sqlite:/home/n41r0j/" + tableName;
-//
-//        try (Connection conn = DriverManager.getConnection(dbLocation)) {
-//            String selectSql = "SELECT * FROM subs LIMIT 10";
-//
-//            PreparedStatement stmt = conn.prepareStatement(selectSql);
-//            ResultSet results = stmt.executeQuery();
-//
-//        } catch (SQLException e) {
-//            e.printStackTrace();
-//        }
 
-
-//         String dbLocation = "jdbc:sqlite:/Users/JorianWielink/" + tableName;
-//         String dbLocation = "jdbc:sqlite:C:\Users\Void\ + tableName;
-
-//         TODO: UNCOMMENT THIS to create a new database:
+        // TODO: UNCOMMENT THIS to create a new database:
         createNewDatabase(dbLocation);
         createTable(dbLocation);
         try {
