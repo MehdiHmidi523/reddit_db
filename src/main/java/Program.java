@@ -63,8 +63,8 @@ public class Program {
         long currentTime = System.currentTimeMillis();
 
 //        the following GREATLY speeds up importing the data: 23 seconds against 120 minutes
-//        conn.prepareStatement("PRAGMA synchronous = OFF").execute();
-        conn.prepareStatement("PRAGMA journal_mode = WAL").execute();
+        conn.prepareStatement("PRAGMA synchronous = OFF").execute();
+//        conn.prepareStatement("PRAGMA journal_mode = WAL").execute();
         conn.setAutoCommit(false);
 
         String line = null;
@@ -105,7 +105,9 @@ public class Program {
                 ppstmtSubs.executeBatch();
                 ppstmtUsers.executeBatch();
                 ppstmtPosts.executeBatch();
-                System.out.printf("batch %d executed.", (i / 10000));
+                if (i % 100000 == 0)
+                    conn.commit();
+//                System.out.printf("batch %d executed.", (i / 10000));
             }
         }
 
@@ -113,19 +115,32 @@ public class Program {
             ppstmtSubs.executeBatch();
             ppstmtUsers.executeBatch();
             ppstmtPosts.executeBatch();
+            conn.commit();
         }
 
         System.out.println("\nTotal time in seconds: " + (System.currentTimeMillis() - currentTime) / 1000);
     }
 
     public static void main(String[] args) {
-        String tableName = "redditcomments-not-nullablev10.db";
-
+        String tableName = "redditcomments-not-nullable.db";
+//
         String dbLocation = "jdbc:sqlite:/home/n41r0j/" + tableName;
-        // String dbLocation = "jdbc:sqlite:/Users/JorianWielink/" + tableName;
-        // String dbLocation = "jdbc:sqlite:C:\Users\Void\ + tableName;
+//
+//        try (Connection conn = DriverManager.getConnection(dbLocation)) {
+//            String selectSql = "SELECT * FROM subs LIMIT 10";
+//
+//            PreparedStatement stmt = conn.prepareStatement(selectSql);
+//            ResultSet results = stmt.executeQuery();
+//
+//        } catch (SQLException e) {
+//            e.printStackTrace();
+//        }
 
-        // TODO: UNCOMMENT THIS to create a new database:
+
+//         String dbLocation = "jdbc:sqlite:/Users/JorianWielink/" + tableName;
+//         String dbLocation = "jdbc:sqlite:C:\Users\Void\ + tableName;
+
+//         TODO: UNCOMMENT THIS to create a new database:
         createNewDatabase(dbLocation);
         createTable(dbLocation);
         try {
