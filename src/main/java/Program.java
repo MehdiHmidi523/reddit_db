@@ -122,15 +122,11 @@ public class Program {
 
     public static void main(String[] args) {
         String tableName = "redditcomments-not-nullable.db";
-//
         String dbLocation = "jdbc:sqlite:/home/n41r0j/" + tableName;
-
-        // TODO: UNCOMMENT THIS to create a new database:
         createNewDatabase(dbLocation);
         createTable(dbLocation);
         try {
-            parseJsonToDB(dbLocation, new FileInputStream(new File("/home/n41r0j/Downloads/RC_2012-12")));
-//            parseJsonToDB(dbLocation, new FileInputStream(new File("/home/n41r0j/RC_2007-10")));
+            parseJsonToDB(dbLocation, new FileInputStream(new File("/home/n41r0j/Downloads/RC_2012-12"))); // new File("/home/n41r0j/RC_2007-10")));
         } catch (SQLException | IOException e) { e.printStackTrace(); }
     }
 }
